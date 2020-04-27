@@ -46,6 +46,7 @@
   ./services/lorri.nix
   ./services/mail/offlineimap.nix
   ./services/mopidy.nix
+  ./services/mysql
   ./services/nix-daemon.nix
   ./services/nix-gc
   ./services/ofborg
