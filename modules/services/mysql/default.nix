@@ -100,16 +100,15 @@ in
     launchd.user.agents.mysql =
       { path = [
           mysql
-          # Needed for the mysql_install_db command which calls
-          # the hostname command.
-          pkgs.nettools
         ];
         script = ''
-          ${optionalString isMariaDB ''
-            if ! test -e ${cfg.dataDir}/mysql; then
+          if ! test -e ${cfg.dataDir}/mysql; then
+            ${if isMariaDB then ''
               ${mysql}/bin/mysql_install_db ${installOptions}
-            fi
-          ''}
+            '' else '' 
+              mkdir -p ${cfg.dataDir}
+            ''}
+          fi
           exec ${mysql}/bin/mysqld ${if isMariaDB then mysqldOptions else installOptions}
         '';
         serviceConfig.KeepAlive = true;
