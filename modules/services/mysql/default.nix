@@ -8,14 +8,11 @@ let
 
   mysql = cfg.package;
 
-  isMariaDB = lib.getName mysql == lib.getName pkgs.mariadb;
+  isMariaDB = getName mysql == getName pkgs.mariadb;
 
   mysqldOptions =
     "--defaults-file=/etc/my.cnf --datadir=${cfg.dataDir} --basedir=${mysql}";
-  # For MySQL 5.7+, --insecure creates the root user without password
-  # (earlier versions and MariaDB do this by default).
-  installOptions =
-    "${mysqldOptions} ${lib.optionalString (!isMariaDB) "--insecure"}";
+
 in
 
 {
@@ -46,19 +43,19 @@ in
         type = types.nullOr types.str;
         default = null;
         example = literalExample "0.0.0.0";
-        description = "Address to bind to. The default is to bind to all addresses";
+        description = "Address to bind to. The default is to bind to all addresses.";
       };
 
       port = mkOption {
-        type = types.int;
+        type = types.port;
         default = 3306;
-        description = "Port of MySQL";
+        description = "Port of MySQL.";
       };
 
       dataDir = mkOption {
         type = types.path;
         default = "/var/lib/mysql";
-        description = "Location where MySQL stores its table files";
+        description = "Location where MySQL stores its table files.";
       };
 
       extraOptions = mkOption {
@@ -86,7 +83,7 @@ in
 
   config = mkIf config.services.mysql.enable {
 
-    environment.systemPackages = [mysql];
+    environment.systemPackages = [ mysql ];
 
     environment.etc."my.cnf".text =
     ''
@@ -98,18 +95,14 @@ in
     '';
 
     launchd.user.agents.mysql =
-      { path = [
-          mysql
-        ];
+      { path = [ pkgs.coreutils pkgs.gnused mysql ];
         script = ''
+          # Initialize the database
           if ! test -e ${cfg.dataDir}/mysql; then
-            ${if isMariaDB then ''
-              ${mysql}/bin/mysql_install_db ${installOptions}
-            '' else '' 
-              mkdir -p ${cfg.dataDir}
-            ''}
+            ${if isMariaDB then "${mysql}/bin/mysql_install_db" else "${mysql}/bin/mysqld"} ${mysqldOptions} ${optionalString (!isMariaDB) "--initialize-insecure"}
           fi
-          exec ${mysql}/bin/mysqld ${if isMariaDB then mysqldOptions else installOptions}
+
+          exec ${cfg.package}/bin/mysqld ${mysqldOptions}
         '';
         serviceConfig.KeepAlive = true;
         serviceConfig.RunAtLoad = true;
